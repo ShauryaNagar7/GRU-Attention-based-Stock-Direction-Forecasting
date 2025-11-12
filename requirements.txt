@@ -1,0 +1,13 @@
+#Core Libraries
+
+pandas
+numpy
+yfinance
+scikit-learn
+matplotlib
+
+tensorflow
+
+#Deployment
+
+streamlit
