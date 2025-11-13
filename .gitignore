@@ -1,0 +1,20 @@
+#Environment and dependencies
+
+.venv/
+env/
+venv/
+pycache/
+
+#Data and Models
+
+data/
+models/*.h5
+
+#OS Files
+
+.DS_Store
+Thumbs.db
+
+#Python
+
+*.pyc
