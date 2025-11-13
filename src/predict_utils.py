@@ -63,6 +63,61 @@ def log_prediction(ticker: str, confidence: float, direction: str, loss: float, 
         
     print(f"✅ Prediction logged to {output_path}")
 
+# ====================================================================
+#
+# ====================================================================
+from tensorflow.keras.models import Model
+
+def get_attention_weights(base_model_path: str, X_pred: np.ndarray) -> np.ndarray:
+    """
+    Loads the model and creates a new model whose output is the Attention layer,
+    then returns the attention weights for the final prediction sequence.
+    """
+    try:
+        # Load the base model (which includes the Attention_Mechanism layer)
+        base_model = load_model(base_model_path, custom_objects={'Attention': Attention})
+        
+        # Define the layer we want to observe
+        attention_layer = base_model.get_layer('Attention_Mechanism')
+        
+        # Create a new Keras Model that takes the same input but outputs the Attention Layer's weights.
+        # The Attention_Mechanism layer in Keras typically outputs the weighted context vector, 
+        # but the key to attention visualization is the attention scores, which must be extracted 
+        # from the layer's internal logic or output sequence before reduction.
+        
+        # Since your Attention layer is configured as part of a functional graph (using Attention()), 
+        # the standard way is to create a model outputting the context vector and visualizing 
+        # the attention scores based on the GRU output sequence (the input to the final pooling).
+        
+        # For simplicity and direct visualization, we will assume the output of the 
+        # Attention layer before the Context_Vector_Pool reflects the weighted sequence.
+        
+        # We will extract the output of the layer *before* tf.reduce_mean (Context_Vector_Pool)
+        # to get the sequence where high values represent high attention scores.
+        
+        # Find the output of the layer named 'Attention_Mechanism' (the 3D sequence output)
+        attention_output_tensor = base_model.get_layer('Attention_Mechanism').output
+        
+        # Create a model that outputs this tensor
+        attention_model = Model(inputs=base_model.input, outputs=attention_output_tensor)
+        
+        # Predict the attention output (shape: 1, 30, 128 (GRU_UNITS))
+        weighted_sequence = attention_model.predict(X_pred, verbose=0)
+        
+        # To get a single score per day (30 scores), we average across the feature dimension (axis 2)
+        # and normalize them to create a simple heatmap weight.
+        
+        # Average across the feature dimension (128 units)
+        attention_scores = np.mean(weighted_sequence[0], axis=1) # Shape: (30,)
+        
+        # Normalize scores to 0-1 range for a heatmap
+        normalized_scores = (attention_scores - np.min(attention_scores)) / (np.max(attention_scores) - np.min(attention_scores))
+        
+        return normalized_scores
+
+    except Exception as e:
+        print(f"❌ Error extracting attention weights: {e}")
+        return np.zeros(X_pred.shape[1]) # Return zeros on failure
 
 # ====================================================================
 # --- 2. Feature Engineering Helpers ---
@@ -307,6 +362,14 @@ def run_2class_prediction(ticker: str):
     print(f"FT Final Val Acc: {final_val_acc:.2f}")
     print(f"FT Final Val Loss: {final_val_loss:.4f}")
 
-    # 7. Log Results
+    # 7. Log Results (Log code remains here)
     log_prediction(ticker, confidence, predicted_direction, 
                    final_val_loss, history.history)
+
+    # 8. Final Console Output (Optional, but good for debugging)
+    print(f"\n--- Final Prediction for {ticker} (T+1) ---")
+    print(f"Predicted Direction: **{predicted_direction}**")
+    print(f"Confidence Score (UP Probability): **{confidence:.2f}**")
+    
+    # CRITICAL CHANGE: Return the necessary data for the Streamlit app
+    return confidence, predicted_direction, X_pred, raw_df
