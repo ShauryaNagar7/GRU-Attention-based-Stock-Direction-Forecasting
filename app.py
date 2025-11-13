@@ -6,8 +6,16 @@ import os
 from src.predict_utils import run_2class_prediction, get_attention_weights, BEST_MODEL_PATH # Import necessary functions and constants
 from tensorflow.keras.models import load_model # Used for checking model existence
 
-# --- CONFIGURATION ---
-IT_TICKERS = ['NVDA', 'MSFT', 'TCS.NS', 'AAPL', 'IBM', 'ORCL', 'INTC']
+import random
+import tensorflow as tf
+
+SEED_VALUE = 42
+
+# Set seeds for reproducibility
+np.random.seed(SEED_VALUE)
+tf.random.set_seed(SEED_VALUE)
+random.seed(SEED_VALUE)
+
 
 # --- STREAMLIT APP LAYOUT ---
 
